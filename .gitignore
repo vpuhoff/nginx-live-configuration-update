@@ -1,0 +1,52 @@
+# Директории сборки и загрузок
+build/
+downloads/
+
+# Скомпилированные файлы
+*.o
+*.so
+*.a
+*.la
+*.lo
+
+# Временные файлы
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Файлы конфигурации сборки
+objs/
+Makefile.bak
+*.orig
+*.rej
+
+# Архивы
+*.tar.gz
+*.tgz
+*.zip
+
+# Логи
+*.log
+logs/
+error.log
+access.log
+
+# Файлы конфигурации Nginx по умолчанию
+conf/*.conf
+!conf/nginx.conf.example
+
+# Локальные файлы IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+nginx-*/*
+*.tar.gz*
+ngx_http_dynamic_config_module
+test_module
