@@ -1,0 +1,103 @@
+name: Nginx Module CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  NGINX_VERSION: 1.24.0
+  PCRE_VERSION: 8.45
+  OPENSSL_VERSION: 1.1.1w
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libpcre3 \
+          libpcre3-dev \
+          zlib1g \
+          zlib1g-dev \
+          libssl-dev \
+          wget \
+          make \
+          gcc \
+          perl
+
+    - name: Create Build Environment
+      run: |
+        mkdir -p build
+        mkdir -p downloads
+
+    - name: Download and Extract PCRE
+      run: |
+        cd downloads
+        wget https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz
+        tar xzf pcre-${PCRE_VERSION}.tar.gz -C ../build/
+
+    - name: Download and Extract OpenSSL
+      run: |
+        cd downloads
+        wget https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
+        tar xzf openssl-${OPENSSL_VERSION}.tar.gz -C ../build/
+
+    - name: Download and Extract Nginx
+      run: |
+        cd downloads
+        wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz
+        tar xzf nginx-${NGINX_VERSION}.tar.gz -C ../build/
+
+    - name: Prepare Module
+      run: |
+        mkdir -p build/ngx_http_dynamic_config_module
+        cp ngx_http_dynamic_config_module.c build/ngx_http_dynamic_config_module/
+        echo "ngx_addon_name=ngx_http_dynamic_config_module" > build/ngx_http_dynamic_config_module/config
+        echo "HTTP_MODULES=\"\$HTTP_MODULES ngx_http_dynamic_config_module\"" >> build/ngx_http_dynamic_config_module/config
+        echo "NGX_ADDON_SRCS=\"\$NGX_ADDON_SRCS \$ngx_addon_dir/ngx_http_dynamic_config_module.c\"" >> build/ngx_http_dynamic_config_module/config
+
+    - name: Configure Nginx
+      run: |
+        cd build/nginx-${NGINX_VERSION}
+        ./configure \
+          --prefix=/usr/local/nginx \
+          --with-http_ssl_module \
+          --with-http_v2_module \
+          --with-http_realip_module \
+          --with-http_addition_module \
+          --with-http_sub_module \
+          --with-http_gunzip_module \
+          --with-http_gzip_static_module \
+          --with-threads \
+          --with-file-aio \
+          --with-pcre=../pcre-${PCRE_VERSION} \
+          --with-openssl=../openssl-${OPENSSL_VERSION} \
+          --add-module=../ngx_http_dynamic_config_module
+
+    - name: Build Nginx
+      run: |
+        cd build/nginx-${NGINX_VERSION}
+        make
+
+    - name: Run Tests
+      run: |
+        make test
+
+    - name: Cache Dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          downloads
+          build/pcre-${PCRE_VERSION}
+          build/openssl-${OPENSSL_VERSION}
+        key: ${{ runner.os }}-deps-${{ env.NGINX_VERSION }}-${{ env.PCRE_VERSION }}-${{ env.OPENSSL_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
